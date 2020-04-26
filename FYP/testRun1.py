@@ -10,8 +10,7 @@ from PitchModel import *
 import matplotlib.pyplot as plt
 
 model = PitchModel(11, 68, 100)
-model.bugTest()
-for i in range(20):
+for i in range(120):
     model.step()
 """
 playerMovement = model.datacollector.get_agent_vars_dataframe()

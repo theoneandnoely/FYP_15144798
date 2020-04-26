@@ -8,8 +8,7 @@ Created on Mon Mar 23 13:40:31 2020
 
 from mesa import Agent
 import numpy as np
-from random import randint
-#from BallAgent import *
+from random import *
 
 class PlayerAgent(Agent):
     def __init__(self, unique_id, model, goalkeeper = False, possession = False):
@@ -25,27 +24,88 @@ class PlayerAgent(Agent):
         self.avgDisp = 0
         self.goalkeeper = goalkeeper
         self.possession = possession
+        self.shotThreshold = 0.1 #The barrier to taking a shot. Potential to analyse effect of changing threshold
+        self.passThreshold = 0.01
+        self.passTarget = -1
+        self.tackleTarget = -1
+        self.stepChoice = ""
  
-    '''       
+      
     def checkPossession(self):
-        contents = self.model.grid.get_cell_list_contents(self.pos)
-        for i in range(len(contents)):
-            if type(contents[i]) == BallAgent:
-                possession = True
-                break
+        if self.model.newPossession == self.unique_id:
+            self.possession = True
+            self.model.newPossession = -1
+        if (self.possession == True and self.model.newPossession != -1):
+            self.possession = False
+    
+    def choice(self):
+        choice = ""
+        targetIDs = {}
+        if self.possession == True:
+            xG = self.shotProb()
+            if xG > self.shotThreshold:
+                choice = "Shoot"
             else:
-                possession = False
-        return possession
-    '''           
-        
-        
+                for content, x, y in self.model.grid.coord_iter():
+                    if len(content) == 0:
+                        pass
+                    else:
+                        for i in content:
+                            if i.teamID == self.teamID:
+                                xGTarget = i.shotProb()
+                                if xGTarget > xG:
+                                    targetIDs[i.unique_id] = xGTarget
+                baseVP = 0
+                target = -1
+                if len(targetIDs) != 0:
+                    for key in targetIDs.keys():
+                        target = int(key)
+                        xP = self.passProb(target)
+                        vP = xP*targetIDs[target]
+                        if vP > baseVP:
+                            baseVP = vP
+                if baseVP > self.passThreshold:
+                        choice = "Pass"
+                        self.passTarget = target
+                else:
+                    choice = "Move"
+        else:
+            neighbours = self.model.grid.get_neighborhood(self.pos, moore = True, include_center=False)
+            for i in range(len(neighbours)):
+                content = self.model.grid.get_cell_list_contents(neighbours[i])
+                if len(content) != 0:
+                    for i in content:
+                        if (i.teamID != self.teamID and i.possession == True):
+                            choice = "Tackle"
+                        else:
+                            choice = "Move"
+        return choice
+    
     def move(self):
         possibleSteps = self.model.grid.get_neighborhood(
             self.pos,
             moore = False,
-            include_center = True
+            include_center = False
         )
-        newPosition = self.random.choice(possibleSteps)
+        movePotentials = []
+        for x,y in possibleSteps:
+            if self.teamID == 1:
+                if self.goalkeeper == True:
+                    movePotentials.append(self.model.movePotential1[x][y])
+                else:
+                    movePotentials.append(self.model.movePotential2[x][y])
+            else:
+                if self.goalkeeper == True:
+                    movePotentials.append(self.model.movePotential2[x][y])
+                else:
+                    movePotentials.append(self.model.movePotential1[x][y])
+        minPotential = movePotentials[0]
+        mindex = 0
+        for i in range(len(movePotentials)):
+            if movePotentials[i] < minPotential:
+                minPotential = movePotentials[i]
+                mindex = i
+        newPosition = possibleSteps[mindex]
         (x0,y0) = self.pos
         (x,y)=newPosition
         xDiff = x - x0
@@ -56,8 +116,28 @@ class PlayerAgent(Agent):
             self.model.grid.move_agent(self, newPosition)
         else:
             pass
-        #return self.maxDisp, self.dispPerStep
         
+    def shoot(self):
+        xG = self.shotProb()
+        g = random()
+        if xG > g:
+            self.possession = False
+            if self.teamID == 1:
+                self.model.justConceded = 2
+            else:
+                self.model.justConceded = 1
+        else:
+            self.possession = False
+            for agent, x, y in self.model.grid.coord_iter():
+                if len(agent) == 0:
+                    pass
+                else:
+                    for i in agent:
+                        if (i.goalkeeper == True and i.teamID != self.teamID):
+                            self.model.newPossession = i.unique_id
+                        else:
+                            pass
+    
     def displacement(self):
         disp = 0
         sumX = sum(self.stepsX)
@@ -78,87 +158,122 @@ class PlayerAgent(Agent):
                 maxDisp = self.dispPerStep[i]
         return maxDisp
     
-    def getPotential(self):
+    
+    def shotProb(self):
+        goalStart = (self.model.grid.width/2)-5
+        goalEnd = (self.model.grid.width/2)+3
         (x,y) = self.pos
         if self.teamID == 1:
-            if self.goalkeeper == True:
-                vStay = self.model.goalPotential2[x][y]
-                vUp = self.model.goalPotential2[x][y-1]
-                vDown = self.model.goalPotential2[x][y+1]
-                vRight = self.model.goalPotential2[x-1][y]
-                vLeft = self.model.goalPotential2[x+1][y]
-            else:
-                vStay = self.model.goalPotential1[x][y]
-                vUp = self.model.goalPotential1[x][y-1]
-                vDown = self.model.goalPotential1[x][y+1]
-                vRight = self.model.goalPotential1[x-1][y]
-                vLeft = self.model.goalPotential1[x+1][y]
+            thetaG2 = np.arctan((goalEnd -x)/(self.model.grid.height-(y)))
+            thetaG1 = np.arctan((goalStart -x)/(self.model.grid.height-(y)))
         else:
-            if self.goalkeeper == True:
-                vStay = self.model.goalPotential1[x][y]
-                vUp = self.model.goalPotential1[x][y+1]
-                vDown = self.model.goalPotential1[x][y-1]
-                vRight = self.model.goalPotential1[x+1][y]
-                vLeft = self.model.goalPotential1[x-1][y]
+            thetaG2 = np.arctan((x-goalStart)/(y+1))
+            thetaG1 = np.arctan((x-goalEnd)/(y+1))
+        thetaG = thetaG2 - thetaG1
+        thetaOpen = thetaG
+        for cellContent, i, j in self.model.grid.coord_iter():
+            if len(cellContent) == 0:
+                pass
             else:
-                vStay = self.model.goalPotential2[x][y]
-                vUp = self.model.goalPotential2[x][y+1]
-                vDown = self.model.goalPotential2[x][y-1]
-                vRight = self.model.goalPotential2[x+1][y]
-                vLeft = self.model.goalPotential2[x-1][y]
-        return (vStay,vUp,vDown,vRight,vLeft)
+                if self.teamID == 1:
+                    if j > y:
+                        thetaI = np.arctan((i-x)/(j-y))
+                        if (thetaI > thetaG1 and thetaI < thetaG2):
+                            thetaI2 = np.arctan(((i+1)-x)/((j+1)-y))
+                            thetaI1 = np.arctan(((i-1)-x)/((j+1)-y))
+                            thetaIt = thetaI2-thetaI1
+                        else:
+                            thetaIt = 0
+                    else:
+                        thetaIt = 0
+                else:
+                    if j < y:
+                        thetaI = np.arctan((x-i)/(y-j))
+                        if (thetaI > thetaG1 and thetaI < thetaG2):
+                            thetaI2 = np.arctan((x-(i-1))/(y-(j-1)))
+                            thetaI1 = np.arctan((x-(i+1))/(y-(j-1)))
+                            thetaIt = thetaI2-thetaI1
+                        else:
+                            thetaIt = 0
+                    else:
+                        thetaIt = 0
+                thetaOpen = thetaOpen - thetaIt
+        xG = np.sin(thetaOpen/2)-(np.cos(thetaOpen/2)/25)
+        return xG
     
-    def shoot(self):
-        shotThreshold = 5000 #Arbitrary and Needs to be chosen once potential fields are calculated
+    def passProb(self, targetID):
         (x,y) = self.pos
-        if self.teamID == 1:
-            if self.model.goalPotential2[x][y] < shotThreshold:
-                g = shotThreshold - self.model.goalPotential2[x][y]
-                s = randint(0,shotThreshold)
-                if g > s:
-                    self.model.score1 = self.model.score1 + 1
-                    #reset Positions function needed
-                else:
-                    #move ball to GK position
-                    pass
-            else:
+        team = self.teamID
+        xTarget = 0
+        yTarget = 0
+        for agent, i,j in self.model.grid.coord_iter():
+            if len(agent) == 0:
                 pass
+            else:
+                for k in agent:
+                    if k.unique_id == targetID:
+                        xTarget = i
+                        yTarget = j
+                        r = ((x-i)**2+(y-j)**2)**(0.5)
+        rNeighbours = []
+        for agent, i, j in self.model.grid.coord_iter():
+            if len(agent) == 0:
+                pass
+            else:
+                for k in agent:
+                    if k.teamID != team:
+                        d = ((xTarget-i)**2+(yTarget-j)**2)**(0.5)
+                        if len(rNeighbours) < 3:
+                            rNeighbours.append(d)
+                        else:
+                            for l in range(len(rNeighbours)):
+                                if d < rNeighbours[l]:
+                                    rNeighbours[l] = d
+        avgR = sum(rNeighbours)/len(rNeighbours)
+        prob = (avgR/10)*(1-(r/250))
+        return prob
+    
+    def passBall(self, target):
+        xP = self.passProb(target)
+        p = random()
+        if xP > p:
+            self.possession = False
+            self.model.newPossession = target
         else:
-            if self.model.goalPotential1[x][y] < shotThreshold:
-                g = shotThreshold - self.model.goalPotential1[x][y]
-                s = randint(0,shotThreshold)
-                if g > s:
-                    self.model.score2 = self.model.score2 + 1
-                    #reset Positions function needed
-                else:
-                    #move ball to GK position
-                    pass
-            else:
-                pass
+            self.possession = False
+            dMin = 10000000
+            for content, x, y in self.model.grid.coord_iter():
+                if len(content) != 0:
+                    for k in content:
+                        if k.unique_id == target:
+                            i = x
+                            j = y
+            for content, x, y in self.model.grid.coord_iter():
+                if len(content) != 0:
+                    for k in content:
+                        if k.teamID != self.teamID:
+                            d = ((x-i)**2+(y-j)**2)**(0.5)
+                            if d < dMin:
+                                dMin = d
+                                self.model.newPossession = k.unique_id
     
-    def passBall(self):
-        '''
-        for every goalPotential < self.goalPotential:
-            get cell contents
-            if cell contains playerAgent with teamID == self.teamID:
-                listOfPassOptions.append([x,y])
-        for min(listOfPassOptions):
-            if passPotential < passThreshold:
-                ballPos == targetPos
-            else:
-                repeat for nextMinimum
-        '''
-        pass
-    
-    def tackle(self):
+    def tackle(self, target):
         '''
         getNeighborhood
         if ballAgent is in nextCell:
             take possession of ballAgent
         '''
-        pass
+        v = random()
+        if v > 0.5:
+            self.model.newPossession = self.unique_id
+            for content, x, y in self.model.grid.coord_iter():
+                if len(content) != 0:
+                    for k in content:
+                        if k.unique_id == target:
+                            k.possession = False
     
     def bugTest(self):
+        '''
         idS = str(self.unique_id)
         print("Unique ID: " + idS)
         team = str(self.teamID)
@@ -170,20 +285,27 @@ class PlayerAgent(Agent):
         print("Y: " + yStr)
         if self.goalkeeper is True:
             print("(GK)")
+        '''
         if self.possession == True:
-            print("In Possession")
-        #potential = self.getPotential()
-        #potS = str(potential)
-        #print("V: " + potS)
+            idS = str(self.unique_id)
+            print("Unique ID: " + idS)
+            xG = str(self.shotProb())
+            print("xG: " + xG)
     
     def step(self):
-        #self.shoot()
-        #self.passBall()
-        #self.tackle()
+        self.checkPossession()
+        self.stepChoice = self.choice()
         self.displacement()
         self.avgDisp = self.averageDisp()
         self.maxDisp = self.maxDisplacement()
         self.bugTest()
         
     def advance(self):
-        self.move()
+        if self.stepChoice == "Shoot":
+            self.shoot()
+        elif self.stepChoice == "Pass":
+            self.passBall(self.passTarget)
+        elif self.stepChoice == "Tackle":
+            self.tackle(self.tackleTarget)
+        else:
+            self.move()
