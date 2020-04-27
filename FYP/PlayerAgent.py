@@ -8,7 +8,6 @@ Created on Mon Mar 23 13:40:31 2020
 
 from mesa import Agent
 import numpy as np
-from random import *
 
 class PlayerAgent(Agent):
     def __init__(self, unique_id, model, goalkeeper = False, possession = False):
@@ -24,6 +23,8 @@ class PlayerAgent(Agent):
         self.avgDisp = 0
         self.goalkeeper = goalkeeper
         self.possession = possession
+        self.state = ""
+        
         self.shotThreshold = 0.1 #The barrier to taking a shot. Potential to analyse effect of changing threshold
         self.passThreshold = 0.01
         self.passTarget = -1
@@ -37,6 +38,26 @@ class PlayerAgent(Agent):
             self.model.newPossession = -1
         if (self.possession == True and self.model.newPossession != -1):
             self.possession = False
+    
+    def checkState(self):
+        if self.possession == True:
+            if self.goalkeeper == True:
+                self.state = "GKP"
+            else:
+                self.state = "BP"
+        else:
+            if self.goalkeeper == False:
+                changedState = False
+                for content, x, y in self.model.grid.coord_iter():
+                    if len(content)!=0:
+                        for i in content:
+                            if (i.possession == True and i.teamID == self.teamID):
+                                self.state = "PO"
+                                changedState = True
+                if changedState == False:
+                    self.state = "DF"
+            else:
+                self.state = "GK"
     
     def choice(self):
         choice = ""
@@ -70,12 +91,13 @@ class PlayerAgent(Agent):
                 else:
                     choice = "Move"
         else:
-            neighbours = self.model.grid.get_neighborhood(self.pos, moore = True, include_center=False)
+            neighbours = self.model.grid.get_neighborhood(self.pos, moore = True, include_center=True)
             for i in range(len(neighbours)):
                 content = self.model.grid.get_cell_list_contents(neighbours[i])
                 if len(content) != 0:
                     for i in content:
                         if (i.teamID != self.teamID and i.possession == True):
+                            self.tackleTarget = i.unique_id
                             choice = "Tackle"
                         else:
                             choice = "Move"
@@ -90,22 +112,40 @@ class PlayerAgent(Agent):
         movePotentials = []
         for x,y in possibleSteps:
             if self.teamID == 1:
-                if self.goalkeeper == True:
-                    movePotentials.append(self.model.movePotential1[x][y])
+                if self.state == "GK":
+                    movePotentials.append(self.model.movePotentialGK1[x][y])
+                elif self.state == "GKP":
+                    movePotentials.append(self.model.movePotentialGKP1[x][y])
+                elif self.state == "DF":
+                    movePotentials.append(self.model.movePotentialDF1[x][y])
+                elif self.state == "PO":
+                    movePotentials.append(self.model.movePotentialPO1[x][y])
+                elif self.state == "BP":
+                    movePotentials.append(self.model.movePotentialBP1[x][y])
                 else:
-                    movePotentials.append(self.model.movePotential2[x][y])
+                    print("Error in move: Player has no state")
             else:
-                if self.goalkeeper == True:
-                    movePotentials.append(self.model.movePotential2[x][y])
+                if self.state == "GK":
+                    movePotentials.append(self.model.movePotentialGK2[x][y])
+                elif self.state == "GKP":
+                    movePotentials.append(self.model.movePotentialGKP2[x][y])
+                elif self.state == "DF":
+                    movePotentials.append(self.model.movePotentialDF2[x][y])
+                elif self.state == "PO":
+                    movePotentials.append(self.model.movePotentialPO2[x][y])
+                elif self.state == "BP":
+                    movePotentials.append(self.model.movePotentialBP2[x][y])
                 else:
-                    movePotentials.append(self.model.movePotential1[x][y])
+                    print("Error in move: Player has no state")
+        minPotentials = []
         minPotential = movePotentials[0]
-        mindex = 0
         for i in range(len(movePotentials)):
             if movePotentials[i] < minPotential:
-                minPotential = movePotentials[i]
-                mindex = i
-        newPosition = possibleSteps[mindex]
+                minPotenital = movePotentials[i]
+                minPotentials = [i]
+            elif movePotentials[i] == minPotential:
+                minPotentials.append(i)
+        newPosition = possibleSteps[self.model.random.choice(minPotentials)]
         (x0,y0) = self.pos
         (x,y)=newPosition
         xDiff = x - x0
@@ -119,7 +159,7 @@ class PlayerAgent(Agent):
         
     def shoot(self):
         xG = self.shotProb()
-        g = random()
+        g = self.model.random.random()
         if xG > g:
             self.possession = False
             if self.teamID == 1:
@@ -235,7 +275,7 @@ class PlayerAgent(Agent):
     
     def passBall(self, target):
         xP = self.passProb(target)
-        p = random()
+        p = self.model.random.random()
         if xP > p:
             self.possession = False
             self.model.newPossession = target
@@ -263,7 +303,7 @@ class PlayerAgent(Agent):
         if ballAgent is in nextCell:
             take possession of ballAgent
         '''
-        v = random()
+        v = self.model.random.random()
         if v > 0.5:
             self.model.newPossession = self.unique_id
             for content, x, y in self.model.grid.coord_iter():
@@ -294,6 +334,7 @@ class PlayerAgent(Agent):
     
     def step(self):
         self.checkPossession()
+        self.checkState()
         self.stepChoice = self.choice()
         self.displacement()
         self.avgDisp = self.averageDisp()

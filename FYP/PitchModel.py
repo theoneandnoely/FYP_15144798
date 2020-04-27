@@ -28,25 +28,120 @@ class PitchModel(Model):
         self.i = 0
         self.newPossession = -1
         
+        #Initialise potential fields for each state
+        self.movePotentialGK1 = np.zeros((width, height))
+        self.movePotentialGK2 = np.zeros((width, height))
+        self.movePotentialGKP1 = np.zeros((width, height))
+        self.movePotentialGKP2 = np.zeros((width, height))
+        self.movePotentialDF1 = np.zeros((width, height))
+        self.movePotentialDF2 = np.zeros((width, height))
+        self.movePotentialPO1 = np.zeros((width, height))
+        self.movePotentialPO2 = np.zeros((width, height))
+        self.movePotentialBP1 = np.zeros((width, height))
+        self.movePotentialBP2 = np.zeros((width, height))
+        
         #Set initial potential field due to goals
-        self.goalPotential1 = np.zeros((width, height))
-        self.goalPotential2 = np.zeros((width, height))
-        self.movePotential1 = np.zeros((width, height))
-        self.movePotential2 = np.zeros((width, height))
+        self.goalPotentialGK1 = np.zeros((width, height))
+        self.goalPotentialGK2 = np.zeros((width, height))
+        self.goalPotentialGKP1 = np.zeros((width, height))
+        self.goalPotentialGKP2 = np.zeros((width, height))
+        self.goalPotentialDF1 = np.zeros((width, height))
+        self.goalPotentialDF2 = np.zeros((width, height))
+        self.goalPotentialPO1 = np.zeros((width, height))
+        self.goalPotentialPO2 = np.zeros((width, height))
+        self.goalPotentialBP1 = np.zeros((width, height))
+        self.goalPotentialBP2 = np.zeros((width, height))
+        
         for x in range(8):
             for y in range(height):
                 widthVal = ((width/2)-4) + x
-                self.goalPotential1[int(widthVal)][y] = (y+1)*10
-                self.goalPotential2[int(widthVal)][height-(y+1)] = (y+1)*10
+                self.goalPotentialGK1[int(widthVal)][y] = self.goalPotentialGK1[int(widthVal)][y] + (y+1)
+                self.goalPotentialGK1[int(widthVal)][height-(y+1)] = self.goalPotentialGK1[int(widthVal)][height-(y+1)] - np.log2(height-(y+1))
+                
+                self.goalPotentialGK2[int(widthVal)][y] = self.goalPotentialGK2[int(widthVal)][y] - np.log2(height-(y+1))
+                self.goalPotentialGK2[int(widthVal)][height-(y+1)] = self.goalPotentialGK2[int(widthVal)][height-(y+1)] + (y+1)
+                
+                self.goalPotentialGKP1[int(widthVal)][y] = self.goalPotentialGKP1[int(widthVal)][y] + (y+1)
+                self.goalPotentialGKP1[int(widthVal)][height-(y+1)] = self.goalPotentialGKP1[int(widthVal)][height-(y+1)] - np.log2(height-(y+1))
+                
+                self.goalPotentialGKP2[int(widthVal)][y] = self.goalPotentialGKP2[int(widthVal)][y] - np.log2(height-(y+1))
+                self.goalPotentialGKP2[int(widthVal)][height-(y+1)] = self.goalPotentialGKP2[int(widthVal)][height-(y+1)] + (y+1)
+                
+                self.goalPotentialDF1[int(widthVal)][y] = self.goalPotentialDF1[int(widthVal)][y] + (y+1)
+                self.goalPotentialDF1[int(widthVal)][height-(y+1)] = self.goalPotentialDF1[int(widthVal)][height-(y+1)] - np.log2(height-(y+1))
+                
+                self.goalPotentialDF2[int(widthVal)][y] = self.goalPotentialDF2[int(widthVal)][y] - np.log2(height-(y+1))
+                self.goalPotentialDF2[int(widthVal)][height-(y+1)] = self.goalPotentialDF2[int(widthVal)][height-(y+1)] + (y+1)
+                
+                self.goalPotentialPO1[int(widthVal)][y] = self.goalPotentialPO1[int(widthVal)][y] - np.log2(height-(y+1))
+                self.goalPotentialPO1[int(widthVal)][height-(y+1)] = self.goalPotentialPO1[int(widthVal)][height-(y+1)] + (y+1)
+                
+                self.goalPotentialPO2[int(widthVal)][y] = self.goalPotentialPO2[int(widthVal)][y] + (y+1)
+                self.goalPotentialPO2[int(widthVal)][height-(y+1)] = self.goalPotentialPO2[int(widthVal)][height-(y+1)] - np.log2(height-(y+1))
+                
+                self.goalPotentialBP1[int(widthVal)][y] = self.goalPotentialBP1[int(widthVal)][y] - np.log2(height-(y+1))
+                self.goalPotentialBP1[int(widthVal)][height-(y+1)] = self.goalPotentialBP1[int(widthVal)][height-(y+1)] + (y+1)
+                
+                self.goalPotentialBP2[int(widthVal)][y] = self.goalPotentialBP2[int(widthVal)][y] + (y+1)
+                self.goalPotentialBP2[int(widthVal)][height-(y+1)] = self.goalPotentialBP2[int(widthVal)][height-(y+1)] - np.log2(height-(y+1))
+                
         for x in range(int((width/2)-4)):
             for y in range(height):
-                r = (((x+1)**2)+((y+1)**2))**0.5
+                r1 = (((x+1)**2)+((y+1)**2))**0.5
+                r2 = (((x+1)**2)+((height-(y+1))**2))**0.5
                 goalStart = ((width/2)-5) -x
                 goalEnd = ((width/2)+4) + x
-                self.goalPotential1[int(goalStart)][y] = 10*r
-                self.goalPotential1[int(goalEnd)][y] = 10*r
-                self.goalPotential2[int(goalStart)][height-(y+1)] = 10*r
-                self.goalPotential2[int(goalEnd)][height-(y+1)] = 10*r
+                
+                self.goalPotentialGK1[int(goalStart)][y] = self.goalPotentialGK1[int(goalStart)][y] + (r1)
+                self.goalPotentialGK1[int(goalEnd)][y] = self.goalPotentialGK1[int(goalEnd)][y] + (r1)
+                self.goalPotentialGK1[int(goalStart)][height-(y+1)] = self.goalPotentialGK1[int(goalStart)][height-(y+1)] - np.log2(r2)
+                self.goalPotentialGK1[int(goalEnd)][height-(y+1)] = self.goalPotentialGK1[int(goalEnd)][height-(y+1)] - np.log2(r2)
+                
+                self.goalPotentialGK2[int(goalStart)][y] = self.goalPotentialGK2[int(goalStart)][y] - np.log2(r2)
+                self.goalPotentialGK2[int(goalEnd)][y] = self.goalPotentialGK2[int(goalEnd)][y] - np.log2(r2)
+                self.goalPotentialGK2[int(goalStart)][height-(y+1)] = self.goalPotentialGK2[int(goalStart)][height-(y+1)] + (r1)
+                self.goalPotentialGK2[int(goalEnd)][height-(y+1)] = self.goalPotentialGK2[int(goalEnd)][height-(y+1)] + (r1)
+                
+                self.goalPotentialGKP1[int(goalStart)][y] = self.goalPotentialGKP1[int(goalStart)][y] + (r1)
+                self.goalPotentialGKP1[int(goalEnd)][y] = self.goalPotentialGKP1[int(goalEnd)][y] + (r1)
+                self.goalPotentialGKP1[int(goalStart)][height-(y+1)] = self.goalPotentialGKP1[int(goalStart)][height-(y+1)] - np.log2(r2)
+                self.goalPotentialGKP1[int(goalEnd)][height-(y+1)] = self.goalPotentialGKP1[int(goalEnd)][height-(y+1)] - np.log2(r2)
+                
+                self.goalPotentialGKP2[int(goalStart)][y] = self.goalPotentialGKP2[int(goalStart)][y] - np.log2(r2)
+                self.goalPotentialGKP2[int(goalEnd)][y] = self.goalPotentialGKP2[int(goalEnd)][y] - np.log2(r2)
+                self.goalPotentialGKP2[int(goalStart)][height-(y+1)] = self.goalPotentialGKP2[int(goalStart)][height-(y+1)] + (r1)
+                self.goalPotentialGKP2[int(goalEnd)][height-(y+1)] = self.goalPotentialGKP2[int(goalEnd)][height-(y+1)] + (r1)
+                
+                self.goalPotentialDF1[int(goalStart)][y] = self.goalPotentialDF1[int(goalStart)][y] + (r1)
+                self.goalPotentialDF1[int(goalEnd)][y] = self.goalPotentialDF1[int(goalEnd)][y] + (r1)
+                self.goalPotentialDF1[int(goalStart)][height-(y+1)] = self.goalPotentialDF1[int(goalStart)][height-(y+1)] - np.log2(r2)
+                self.goalPotentialDF1[int(goalEnd)][height-(y+1)] = self.goalPotentialDF1[int(goalEnd)][height-(y+1)] - np.log2(r2)
+                
+                self.goalPotentialDF2[int(goalStart)][y] = self.goalPotentialDF2[int(goalStart)][y] - np.log2(r2)
+                self.goalPotentialDF2[int(goalEnd)][y] = self.goalPotentialDF2[int(goalEnd)][y] - np.log2(r2)
+                self.goalPotentialDF2[int(goalStart)][height-(y+1)] = self.goalPotentialDF2[int(goalStart)][height-(y+1)] + (r1)
+                self.goalPotentialDF2[int(goalEnd)][height-(y+1)] = self.goalPotentialDF2[int(goalEnd)][height-(y+1)] + (r1)
+                
+                self.goalPotentialPO1[int(goalStart)][y] = self.goalPotentialPO1[int(goalStart)][y] - np.log2(r2)
+                self.goalPotentialPO1[int(goalEnd)][y] = self.goalPotentialPO1[int(goalEnd)][y] - np.log2(r2)
+                self.goalPotentialPO1[int(goalStart)][height-(y+1)] = self.goalPotentialPO1[int(goalStart)][height-(y+1)] + (r1)
+                self.goalPotentialPO1[int(goalEnd)][height-(y+1)] = self.goalPotentialPO1[int(goalEnd)][height-(y+1)] + (r1)
+                
+                self.goalPotentialPO2[int(goalStart)][y] = self.goalPotentialPO2[int(goalStart)][y] + (r1)
+                self.goalPotentialPO2[int(goalEnd)][y] = self.goalPotentialPO2[int(goalEnd)][y] + (r1)
+                self.goalPotentialPO2[int(goalStart)][height-(y+1)] = self.goalPotentialPO2[int(goalStart)][height-(y+1)]  - np.log2(r2)
+                self.goalPotentialPO2[int(goalEnd)][height-(y+1)] = self.goalPotentialPO2[int(goalEnd)][height-(y+1)] - np.log2(r2)
+                
+                self.goalPotentialBP1[int(goalStart)][y] = self.goalPotentialBP1[int(goalStart)][y] - np.log2(r2)
+                self.goalPotentialBP1[int(goalEnd)][y] = self.goalPotentialBP1[int(goalEnd)][y] - np.log2(r2)
+                self.goalPotentialBP1[int(goalStart)][height-(y+1)] = self.goalPotentialBP1[int(goalStart)][height-(y+1)] + (r1)
+                self.goalPotentialBP1[int(goalEnd)][height-(y+1)] = self.goalPotentialBP1[int(goalEnd)][height-(y+1)] + (r1)
+                
+                self.goalPotentialBP2[int(goalStart)][y] = self.goalPotentialBP2[int(goalStart)][y] + (r1)
+                self.goalPotentialBP2[int(goalEnd)][y] = self.goalPotentialBP2[int(goalEnd)][y] + (r1)
+                self.goalPotentialBP2[int(goalStart)][height-(y+1)] = self.goalPotentialBP2[int(goalStart)][height-(y+1)] - np.log2(r2)
+                self.goalPotentialBP2[int(goalEnd)][height-(y+1)] = self.goalPotentialBP2[int(goalEnd)][height-(y+1)] - np.log2(r2)
+        
         
         #Create Agents
         for i in range(self.num_agents):
@@ -119,113 +214,121 @@ class PitchModel(Model):
     def calcPotential(self):
         for x in range(self.grid.width):
             for y in range(self.grid.height):
-                self.movePotential1[x][y] = self.goalPotential1[x][y]
-                self.movePotential2[x][y] = self.goalPotential2[x][y]
+                self.movePotentialGK1[x][y] = self.goalPotentialGK1[x][y]
+                self.movePotentialGK2[x][y] = self.goalPotentialGK2[x][y]
+                
+                self.movePotentialGKP1[x][y] = self.goalPotentialGKP1[x][y]
+                self.movePotentialGKP2[x][y] = self.goalPotentialGKP2[x][y]
+                
+                self.movePotentialDF1[x][y] = self.goalPotentialDF1[x][y]
+                self.movePotentialDF2[x][y] = self.goalPotentialDF2[x][y]
+                
+                self.movePotentialPO1[x][y] = self.goalPotentialPO1[x][y]
+                self.movePotentialPO2[x][y] = self.goalPotentialPO2[x][y]
+                
+                self.movePotentialBP1[x][y] = self.goalPotentialBP1[x][y]
+                self.movePotentialBP2[x][y] = self.goalPotentialBP2[x][y]
+                
         playerPos = {}
         for agent, x, y in self.grid.coord_iter():
             if len(agent) == 0:
                 pass
             else:
                 for i in agent:
-                    playerPos[i.unique_id] = {"x":x,"y":y,"team ID":i.teamID, "possession":i.possession}
+                    playerPos[i.unique_id] = {"x":x,"y":y, "state":i.state}
+                    if i.state == "":
+                        i.checkState()
+                        playerPos[i.unique_id]['state'] = i.state
         for key in playerPos.keys():
             agent = playerPos[key]
-            potential = np.zeros((self.grid.width, self.grid.height))
-            negRangeX = agent['x']+1
-            negRangeY = agent['y']+1
-            posRangeX = self.grid.width - (agent['x'])
-            posRangeY = self.grid.height - (agent['y'])
-                
-            if agent['team ID'] == 1:
-                for i in range(negRangeX):
-                    for j in range(negRangeY):
-                        negX = agent['x']-(i)
-                        negY = agent['y']-(j)
-                        r = ((i)**2+(j)**2)**(0.5)
-                        if r > 0:
-                            potential[negX][negY] = 400*((((2**(-1/6))/r)**12)-(((2**(-1/6))/r)**4))
-                    for j in range(posRangeY):
-                        negX = agent['x']-(i)
-                        posY = agent['y']+(j)
-                        r = ((i)**2+(j)**2)**(0.5)
-                        if r > 0:
-                            potential[negX][posY] = 400*((((2**(-1/6))/r)**12)-(((2**(-1/6))/r)**4))
-                for i in range(posRangeX):
-                    for j in range(negRangeX):
-                        posX = agent['x']+(i)
-                        negY = agent['y']-(j)
-                        r = ((i)**2+(j)**2)**(0.5)
-                        if r > 0:
-                            potential[posX][negY] = 400*((((2**(-1/6))/r)**12)-(((2**(-1/6))/r)**4))
-                    for j in range(posRangeY):
-                        posX = agent['x']+(i)
-                        posY = agent['y']+(j)
-                        r = ((i)**2+(j)**2)**(0.5)
-                        if r > 0:
-                            potential[posX][posY] = 400*((((2**(-1/6))/r)**12)-(((2**(-1/6))/r)**4))
-                for i in range(self.grid.width):
-                    for j in range(self.grid.height):
-                        self.movePotential1[i][j] = self.movePotential1[i][j] + potential[i][j]
-                        self.movePotential2[i][j] = self.movePotential2[i][j] - potential[i][j]
-            elif agent['team ID'] == 2:
-                for i in range(negRangeX):
-                    for j in range(negRangeY):
-                        negX = agent['x']-(i)
-                        negY = agent['y']-(j)
-                        r = ((i)**2+(j)**2)**(0.5)
-                        if r > 0:
-                            potential[negX][negY] = 400*((((2**(-1/6))/r)**12)-(((2**(-1/6))/r)**4))
-                    for j in range(posRangeY):
-                        negX = agent['x']-(i)
-                        posY = agent['y']+(j)
-                        r = ((i)**2+(j)**2)**(0.5)
-                        if r > 0:
-                            potential[negX][posY] = 400*((((2**(-1/6))/r)**12)-(((2**(-1/6))/r)**4))
-                for i in range(posRangeX):
-                    for j in range(negRangeX):
-                        posX = agent['x']+(i)
-                        negY = agent['y']-(j)
-                        r = ((i)**2+(j)**2)**(0.5)
-                        if r > 0:
-                            potential[posX][negY] = 400*((((2**(-1/6))/r)**12)-(((2**(-1/6))/r)**4))
-                    for j in range(posRangeY):
-                        posX = agent['x']+(i)
-                        posY = agent['y']+(j)
-                        r = ((i)**2+(j)**2)**(0.5)
-                        if r > 0:
-                            potential[posX][posY] = 400*((((2**(-1/6))/r)**12)-(((2**(-1/6))/r)**4))
-                for i in range(self.grid.width):
-                    for j in range(self.grid.height):
-                        self.movePotential2[i][j] = self.movePotential2[i][j] + potential[i][j]
-                        self.movePotential1[i][j] = self.movePotential1[i][j] - potential[i][j]
-            if agent['possession'] == True:
-                for i in range(negRangeX):
-                    for j in range(negRangeY):
-                        negX = agent['x']-(i)
-                        negY = agent['y']-(j)
-                        r = ((i)**2+(j)**2)**(0.5)
-                        potential[negX][negY] = (r/2)**2
-                    for j in range(posRangeY):
-                        negX = agent['x']-(i)
-                        posY = agent['y']+(j)
-                        r = ((i)**2+(j)**2)**(0.5)
-                        potential[negX][posY] = (r/2)**2
-                for i in range(posRangeX):
-                    for j in range(negRangeY):
-                        posX = agent['x']+(i)
-                        negY = agent['y']-(j)
-                        r = ((i)**2+(j)**2)**(0.5)
-                        potential[posX][negY] = (r/2)**2
-                    for j in range(posRangeY):
-                        posX = agent['x']+(i)
-                        posY = agent['y']+(j)
-                        r = ((i)**2+(j)**2)**(0.5)
-                        potential[posX][posY] = (r/2)**2
-                for i in range(self.grid.width):
-                    for j in range(self.grid.height):
-                        self.movePotential1[i][j] = self.movePotential1[i][j] + potential[i][j]
-                        self.movePotential2[i][j] = self.movePotential2[i][j] + potential[i][j]
-        #return self.movePotential1, self.movePotential2
+            
+            for i in range(self.grid.width):
+                for j in range(self.grid.height):
+                    r = ((agent['x']-i)**2+(agent['y']-j)**2)**(0.5)
+                    if r != 0:
+                        if agent['state'] == "GK":
+                            self.movePotentialGK1[i][j] = self.movePotentialGK1[i][j] + (20/(r**2))
+                            self.movePotentialGK2[i][j] = self.movePotentialGK2[i][j] + (20/(r**2))
+                            
+                            self.movePotentialGKP1[i][j] = self.movePotentialGKP1[i][j] + (20/(r**2))
+                            self.movePotentialGKP2[i][j] = self.movePotentialGKP2[i][j] + (20/(r**2))
+                            
+                            self.movePotentialDF1[i][j] = self.movePotentialDF1[i][j] + 40*((5*(2**(-1/6))/r)**12-(5*(2**(-1/6))/r)**6)
+                            self.movePotentialDF2[i][j] = self.movePotentialDF2[i][j] + 40*((5*(2**(-1/6))/r)**12-(5*(2**(-1/6))/r)**6)
+                            
+                            self.movePotentialPO1[i][j] = self.movePotentialPO1[i][j] + (20/(r**2))
+                            self.movePotentialPO2[i][j] = self.movePotentialPO2[i][j] + (20/(r**2))
+                            
+                            self.movePotentialBP1[i][j] = self.movePotentialBP1[i][j] + (20/(r**2))
+                            self.movePotentialBP2[i][j] = self.movePotentialBP2[i][j] + (20/(r**2))
+                            
+                        elif agent['state'] == "GKP":
+                            self.movePotentialGK1[i][j] = self.movePotentialGK1[i][j] + (20/(r**2))
+                            self.movePotentialGK2[i][j] = self.movePotentialGK2[i][j]  + (20/(r**2))
+                            
+                            self.movePotentialGKP1[i][j] = self.movePotentialGKP1[i][j]
+                            self.movePotentialGKP2[i][j] = self.movePotentialGKP2[i][j]
+                            
+                            self.movePotentialDF1[i][j] = self.movePotentialDF1[i][j] + (20/(r**2))
+                            self.movePotentialDF2[i][j] = self.movePotentialDF2[i][j] + (20/(r**2))
+                            
+                            self.movePotentialPO1[i][j] = self.movePotentialPO1[i][j] + (20/(r**2))
+                            self.movePotentialPO2[i][j] = self.movePotentialPO2[i][j] + (20/(r**2))
+                            
+                            self.movePotentialBP1[i][j] = self.movePotentialBP1[i][j]
+                            self.movePotentialBP2[i][j] = self.movePotentialBP2[i][j]
+                            
+                        elif agent['state'] == "DF":
+                            self.movePotentialGK1[i][j] = self.movePotentialGK1[i][j] + (20/(r**2))
+                            self.movePotentialGK2[i][j] = self.movePotentialGK2[i][j] + (20/(r**2))
+                            
+                            self.movePotentialGKP1[i][j] = self.movePotentialGKP1[i][j] + (20/(r**2))
+                            self.movePotentialGKP2[i][j] = self.movePotentialGKP2[i][j] + (20/(r**2))
+                            
+                            self.movePotentialDF1[i][j] = self.movePotentialDF1[i][j] + (20/(r**2))
+                            self.movePotentialDF2[i][j] = self.movePotentialDF2[i][j] + (20/(r**2))
+                            
+                            self.movePotentialPO1[i][j] = self.movePotentialPO1[i][j] + (20/(r**2))
+                            self.movePotentialPO2[i][j] = self.movePotentialPO2[i][j] + (20/(r**2))
+                            
+                            self.movePotentialBP1[i][j] = self.movePotentialBP1[i][j] + (20/(r**2))
+                            self.movePotentialBP2[i][j] = self.movePotentialBP2[i][j] + (20/(r**2))
+                            
+                        elif agent['state'] == "PO":
+                            self.movePotentialGK1[i][j] = self.movePotentialGK1[i][j] - (20/(r**2))
+                            self.movePotentialGK2[i][j] = self.movePotentialGK2[i][j] - (20/(r**2))
+                            
+                            self.movePotentialGKP1[i][j] = self.movePotentialGKP1[i][j] - (20/(r**2))
+                            self.movePotentialGKP2[i][j] = self.movePotentialGKP2[i][j] - (20/(r**2))
+                            
+                            self.movePotentialDF1[i][j] = self.movePotentialDF1[i][j] + 40*((2.5*(2**(-1/6))/r)**12-(2.5*(2**(-1/6))/r)**6)
+                            self.movePotentialDF2[i][j] = self.movePotentialDF2[i][j] + 40*((2.5*(2**(-1/6))/r)**12-(2.5*(2**(-1/6))/r)**6)
+                            
+                            self.movePotentialPO1[i][j] = self.movePotentialPO1[i][j] + (20/(r**2))
+                            self.movePotentialPO2[i][j] = self.movePotentialPO2[i][j] + (20/(r**2))
+                            
+                            self.movePotentialBP1[i][j] = self.movePotentialBP1[i][j] + (20/(r**2))
+                            self.movePotentialBP2[i][j] = self.movePotentialBP2[i][j] + (20/(r**2))
+                            
+                        elif agent['state'] == "BP":
+                            self.movePotentialGK1[i][j] = self.movePotentialGK1[i][j] - (20/(r**2))
+                            self.movePotentialGK2[i][j] = self.movePotentialGK2[i][j] - (20/(r**2))
+                            
+                            self.movePotentialGKP1[i][j] = self.movePotentialGKP1[i][j]
+                            self.movePotentialGKP2[i][j] = self.movePotentialGKP2[i][j]
+                            
+                            self.movePotentialDF1[i][j] = self.movePotentialDF1[i][j] - (20/(r**2))
+                            self.movePotentialDF2[i][j] = self.movePotentialDF2[i][j] - (20/(r**2))
+                            
+                            self.movePotentialPO1[i][j] = self.movePotentialPO1[i][j] + 40*((5*(2**(-1/6))/r)**12-(5*(2**(-1/6))/r)**6)
+                            self.movePotentialPO2[i][j] = self.movePotentialPO2[i][j] + 40*((5*(2**(-1/6))/r)**12-(5*(2**(-1/6))/r)**6)
+                            
+                            self.movePotentialBP1[i][j] = self.movePotentialBP1[i][j]
+                            self.movePotentialBP2[i][j] = self.movePotentialBP2[i][j]
+                            
+                        else:
+                            print("Error in CalcPotential: Player has no state")
+            
         
     def scoreCheck(self):
         '''Checks if any player agent has successfully scored and increments the team's score by 1'''
@@ -245,18 +348,51 @@ class PitchModel(Model):
             if len(agent) != 0:
                 for k in agent:
                     grid[x][y] = k.teamID
-        name = "Visualisation\Latest Test\Figure_"+str(self.i)+".png"
+        name = "Visualisation\Latest Test\Figure_"+str(self.i)+".jpg"
         plt.imsave(name, grid)
         
-
+        
     def bugTest(self):
         self.calcPotential()
+        plt.figure(1)
+        plt.clf()
+        plt.imshow(self.movePotentialBP1, interpolation = "nearest")
+        
+        plt.figure(2)
+        plt.clf()
+        plt.imshow(self.movePotentialBP2, interpolation = "nearest")
+        
         plt.figure(3)
         plt.clf()
-        plt.imshow(self.movePotential1, interpolation="nearest")
+        plt.imshow(self.movePotentialDF1, interpolation = "nearest")
+        
         plt.figure(4)
         plt.clf()
-        plt.imshow(self.movePotential2, interpolation="nearest")
+        plt.imshow(self.movePotentialDF2, interpolation = "nearest")
+        
+        plt.figure(5)
+        plt.clf()
+        plt.imshow(self.movePotentialGK1, interpolation = "nearest")
+        
+        plt.figure(6)
+        plt.clf()
+        plt.imshow(self.movePotentialGK2, interpolation = "nearest")
+        
+        plt.figure(7)
+        plt.clf()
+        plt.imshow(self.movePotentialGKP1, interpolation = "nearest")
+        
+        plt.figure(8)
+        plt.clf()
+        plt.imshow(self.movePotentialGKP2, interpolation = "nearest")
+        
+        plt.figure(9)
+        plt.clf()
+        plt.imshow(self.movePotentialPO1, interpolation = "nearest")
+        
+        plt.figure(10)
+        plt.clf()
+        plt.imshow(self.movePotentialPO2, interpolation = "nearest")
         
     def step(self):
         '''Advance the model by one step.'''
@@ -266,5 +402,6 @@ class PitchModel(Model):
         self.schedule.step()
         self.i = self.i + 1
         self.gridVisual()
+        
         print("Step: " + str(self.i))
         print(str(self.score1) + " - " + str(self.score2))
